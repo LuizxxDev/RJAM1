@@ -18,9 +18,7 @@ export default function Footer() {
                     <p className="text-gray-500 text-sm">Uma conferência para uma geração que deseja mais de Deus.</p>
                     
                     <div className="flex space-x-4 mt-6">
-                        <a href="#" className="text-gray-400 hover:text-accent-gold"><i className="fa-brands fa-instagram text-xl"></i></a>
-                        <a href="#" className="text-gray-400 hover:text-accent-gold"><i className="fa-brands fa-facebook text-xl"></i></a>
-                        <a href="#" className="text-gray-400 hover:text-accent-gold"><i className="fa-brands fa-youtube text-xl"></i></a>
+                        <a href="https://www.instagram.com/rede_rjam1/" className="text-gray-400 hover:text-accent-gold"><i className="fa-brands fa-instagram text-xl"></i></a>
                     </div>
                 </div>
                 {/* Contato */}

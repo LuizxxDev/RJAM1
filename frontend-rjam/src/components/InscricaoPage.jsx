@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 // Mude para false quando for testar com o pagamento real do banco
-const MODO_TESTE = false; 
+const MODO_TESTE = true; 
 
 export default function InscricaoPage() {
   const [formData, setFormData] = useState({
@@ -19,6 +19,7 @@ export default function InscricaoPage() {
   const [carregando, setCarregando] = useState(false);
   const [erroCpf, setErroCpf] = useState('');
   const [tempoRestante, setTempoRestante] = useState(600); // 10 minutos
+  const [copiado, setCopiado] = useState(false); // Estado para o feedback do botão de copiar
 
   const validarCPF = (cpf) => {
     cpf = cpf.replace(/\D/g, '');
@@ -67,6 +68,20 @@ export default function InscricaoPage() {
     const limpo = cpf.replace(/\D/g, '');
     if (limpo.length !== 11) return cpf;
     return `${limpo.slice(0, 3)}.***.***-${limpo.slice(9, 11)}`;
+  };
+
+  // Função para copiar o código Pix Copia e Cola com feedback visual
+  const copiarCodigoPix = () => {
+    if (qrCodeData?.qr_code) {
+      navigator.clipboard.writeText(qrCodeData.qr_code)
+        .then(() => {
+          setCopiado(true);
+          setTimeout(() => setCopiado(false), 2500); // Reseta o botão após 2.5 segundos
+        })
+        .catch((err) => {
+          console.error("Erro ao copiar o código Pix: ", err);
+        });
+    }
   };
 
   // Temporizador de Expiração do PIX
@@ -149,6 +164,7 @@ export default function InscricaoPage() {
 
     setCarregando(true);
     setTempoRestante(600);
+    setCopiado(false);
 
     try {
       const response = await fetch('https://rjam1-api.onrender.com/api/pix', {
@@ -271,8 +287,31 @@ export default function InscricaoPage() {
                 <div className="flex flex-col items-center">
                   <img src={`data:image/jpeg;base64,${qrCodeData.qr_code_base64}`} alt="QR Code PIX" className="w-48 h-48 mb-4 border-4 border-white rounded" />
                   <p className="text-sm text-gray-400 mb-2">Ou copie o código abaixo:</p>
-                  <input type="text" readOnly value={qrCodeData.qr_code} className="w-full bg-primary-dark border border-gray-600 text-gray-300 text-xs rounded px-3 py-2 mb-4 cursor-text select-all" />
-                  <p className="text-yellow-500 font-bold flex items-center justify-center gap-2 mt-2">
+                  
+                  <input type="text" readOnly value={qrCodeData.qr_code} className="w-full bg-primary-dark border border-gray-600 text-gray-300 text-xs rounded px-3 py-2 mb-3 cursor-text select-all" />
+                  
+                  {/* Botão de Copiar com Feedback Visual */}
+                  <button
+                    type="button"
+                    onClick={copiarCodigoPix}
+                    className={`w-full py-2.5 px-4 rounded-md font-bold text-sm transition-all flex items-center justify-center gap-2 mb-4 ${
+                      copiado 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-accent-gold text-primary-dark hover:bg-yellow-500'
+                    }`}
+                  >
+                    {copiado ? (
+                      <>
+                        <i className="fa-solid fa-check"></i> Código Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-regular fa-copy"></i> Copiar Código Pix
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-yellow-500 font-bold flex items-center justify-center gap-2 mt-1">
                     <i className="fa-solid fa-circle-notch fa-spin"></i> {MODO_TESTE ? "Modo Teste: Aprovando em 5 segundos..." : "Aguardando confirmação do pagamento..."}
                   </p>
                 </div>
