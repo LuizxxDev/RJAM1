@@ -10,7 +10,7 @@ export default function Hero() {
           RJAM1
         </h1>
         <h2 className="font-serif font-bold text-3xl md:text-5xl text-white mb-8 tracking-wide">
-          PÃO, ÓLEO E FOGO
+          ÓLEO, FOGO E PÃO
         </h2>
         
         <div className="flex items-center justify-center gap-4 w-full max-w-2xl mx-auto mb-10">
