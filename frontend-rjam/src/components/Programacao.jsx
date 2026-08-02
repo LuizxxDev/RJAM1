@@ -30,7 +30,7 @@ export default function Programacao() {
                             <span className="text-white">Encerramento</span>
                         </div>
                     </div>
-                    <i className="fa-solid fa-fire text-gray-700 text-4xl absolute bottom-4 right-4 opacity-50"></i>
+                    <i className="fa-regular fa-gem text-gray-700 text-4xl absolute bottom-4 right-4 opacity-50"></i>
                 </div>
                 {/* Sábado */}
                 <div className="border border-gray-700 rounded-lg p-6 bg-secondary-dark relative">
@@ -57,7 +57,7 @@ export default function Programacao() {
                             <span className="text-white">Encerramento</span>
                         </div>
                     </div>
-                    <i className="fa-solid fa-fire text-gray-700 text-4xl absolute bottom-4 right-4 opacity-50"></i>
+                    <i className="fa-regular fa-gem text-gray-700 text-4xl absolute bottom-4 right-4 opacity-50"></i>
                 </div>
                 {/* Domingo */}
                 <div className="border border-gray-700 rounded-lg p-6 bg-secondary-dark relative">
@@ -80,7 +80,7 @@ export default function Programacao() {
                             <span className="text-white">Encerramento</span>
                         </div>
                     </div>
-                    <i className="fa-solid fa-fire text-gray-700 text-4xl absolute bottom-4 right-4 opacity-50"></i>
+                    <i className="fa-regular fa-gem text-gray-700 text-4xl absolute bottom-4 right-4 opacity-50"></i>
                 </div>
             </div>
         </div>

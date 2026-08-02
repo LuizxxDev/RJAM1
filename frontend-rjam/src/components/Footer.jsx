@@ -14,7 +14,7 @@ export default function Footer() {
                             <span className="font-serif font-black text-xl text-accent-gold leading-none">RJAM1</span>
                         </div>
                     </div>
-                    <p className="font-serif text-gray-400 text-sm mb-4">PÃO, ÓLEO E FOGO</p>
+                    <p className="font-serif text-gray-400 text-sm mb-4">ÓLEO, FOGO E PÃO</p>
                     <p className="text-gray-500 text-sm">Uma conferência para uma geração que deseja mais de Deus.</p>
                     
                     <div className="flex space-x-4 mt-6">
@@ -27,11 +27,7 @@ export default function Footer() {
                     <ul className="space-y-3">
                         <li className="flex items-center gap-3 text-gray-400 text-sm">
                             <i className="fa-brands fa-whatsapp text-accent-gold"></i>
-                            (11) 99999-9999
-                        </li>
-                        <li className="flex items-center gap-3 text-gray-400 text-sm">
-                            <i className="fa-regular fa-envelope text-accent-gold"></i>
-                            contato@conferenciarijan.com.br
+                            (91) 98224-0990
                         </li>
                     </ul>
                 </div>
@@ -53,7 +49,8 @@ export default function Footer() {
                 {/* Realização */}
                 <div>
                     <h5 className="text-white font-bold mb-4 uppercase text-sm tracking-wider">Realização</h5>
-                    <p className="text-gray-400 text-sm mb-4">IGREJA DO EVANGELHO QUADRANGULAR</p>
+                    <p className="text-gray-400 text-sm mb-4">REDE DE JOVENS E
+ADOLESCENTES DO MARIGUELLA 1</p>
                     <div className="flex gap-2">
                         <div className="w-8 h-8 border border-accent-gold flex items-center justify-center text-accent-gold"><i className="fa-solid fa-cross"></i></div>
                         <div className="w-8 h-8 border border-accent-gold flex items-center justify-center text-accent-gold"><i className="fa-solid fa-dove"></i></div>
@@ -63,7 +60,7 @@ export default function Footer() {
                 </div>
             </div>
             <div className="border-t border-gray-800 pt-8 text-center">
-                <p className="text-gray-600 text-sm">&copy; 2026 Conferência Rijan - Pão, ÓLEO e FOGO. Todos os direitos reservados.</p>
+                <p className="text-gray-600 text-sm">&copy; 2026 Conferência Rjam1 - Óleo,Fogo e Pão. Todos os direitos reservados.</p>
             </div>
         </div>
     </footer>

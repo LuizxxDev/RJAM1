@@ -25,7 +25,7 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
             <div className="flex items-center gap-3">
-              <i className="fa-solid fa-fire-flame-curved text-accent-gold text-3xl"></i>
+              <i class="fa-regular fa-gem text-accent-gold text-3xl"></i>
               <div className="flex flex-col">
                 <span className="font-serif font-bold text-xl tracking-widest text-white leading-tight">CONFERÊNCIA</span>
                 <span className="font-serif font-black text-2xl text-accent-gold leading-none">RJAM1</span>
