@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 // Mude para false quando for testar com o pagamento real do banco
-const MODO_TESTE = true; 
+const MODO_TESTE = false; 
 
 export default function InscricaoPage() {
   const [formData, setFormData] = useState({
@@ -100,7 +100,7 @@ export default function InscricaoPage() {
           
           // SALVA NO JSON AUTOMATICAMENTE NO MODO TESTE
           try {
-            await fetch('http://localhost:3000/api/admin/salvar-teste', {
+            await fetch('https://rjam1-api.onrender.com/api/admin/salvar-teste', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -119,7 +119,7 @@ export default function InscricaoPage() {
         // Consulta real na API a cada 5 segundos
         intervalo = setInterval(async () => {
           try {
-            const response = await fetch(`http://localhost:3000/api/pix/${qrCodeData.id_transacao}`);
+            const response = await fetch(`https://rjam1-api.onrender.com/api/pix/${qrCodeData.id_transacao}`);
             const data = await response.json();
             
             if (data.status === 'approved') {
@@ -151,7 +151,7 @@ export default function InscricaoPage() {
     setTempoRestante(600);
 
     try {
-      const response = await fetch('http://localhost:3000/api/pix', {
+      const response = await fetch('https://rjam1-api.onrender.com/api/pix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
