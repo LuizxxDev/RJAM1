@@ -33,11 +33,15 @@ export default function AdminPage() {
     setCarregandoLogin(true);
     setErroLogin('');
 
+    // Remove espaços vazios acidentais que o teclado do celular possa ter colocado
+    const usuarioFormatado = usuario.trim();
+    const senhaFormatada = senha.trim();
+
     try {
       const response = await fetch('https://rjam1-api.onrender.com/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario, senha })
+        body: JSON.stringify({ usuario: usuarioFormatado, senha: senhaFormatada })
       });
 
       const data = await response.json();
@@ -80,7 +84,7 @@ export default function AdminPage() {
 
   const inscritosFiltrados = inscritos.filter((inscrito) =>
     inscrito.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    inscrito.email.toLowerCase().includes(busca.toLowerCase())
+    (inscrito.email && inscrito.email.toLowerCase().includes(busca.toLowerCase()))
   );
 
   // SE NÃO ESTIVER LOGADO, MOSTRA A TELA DE LOGIN
@@ -107,6 +111,9 @@ export default function AdminPage() {
                 value={usuario}
                 onChange={(e) => setUsuario(e.target.value)}
                 required
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
                 className="w-full bg-primary-dark border border-gray-600 text-white rounded px-4 py-2 focus:outline-none focus:border-accent-gold"
               />
             </div>
@@ -117,6 +124,9 @@ export default function AdminPage() {
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 required
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
                 className="w-full bg-primary-dark border border-gray-600 text-white rounded px-4 py-2 focus:outline-none focus:border-accent-gold"
               />
             </div>
@@ -167,7 +177,7 @@ export default function AdminPage() {
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-gray-500"></i>
             <input 
               type="text" 
-              placeholder="Pesquisar por nome ou e-mail..." 
+              placeholder="Pesquisar por nome..." 
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               className="w-full bg-secondary-dark border border-gray-700 text-white pl-10 pr-4 py-2.5 rounded-md focus:outline-none focus:border-accent-gold"
@@ -199,7 +209,6 @@ export default function AdminPage() {
                 <thead>
                   <tr className="border-b border-gray-800 bg-primary-dark/50 text-gray-400 text-xs uppercase tracking-wider">
                     <th className="py-4 px-6">Participante</th>
-                    <th className="py-4 px-6">E-mail</th>
                     <th className="py-4 px-6">CPF</th>
                     <th className="py-4 px-6">Valor</th>
                     <th className="py-4 px-6">Status</th>
@@ -209,7 +218,6 @@ export default function AdminPage() {
                   {inscritosFiltrados.map((inscrito, index) => (
                     <tr key={inscrito.id || index} className="hover:bg-gray-800/40 transition-colors">
                       <td className="py-4 px-6 font-bold text-white">{inscrito.nome}</td>
-                      <td className="py-4 px-6 text-gray-300">{inscrito.email}</td>
                       <td className="py-4 px-6 text-gray-300 font-mono">{inscrito.cpf}</td>
                       <td className="py-4 px-6 text-gray-300">R$ {Number(inscrito.valor).toFixed(2)}</td>
                       <td className="py-4 px-6">
