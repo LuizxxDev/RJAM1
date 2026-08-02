@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 // Mude para false quando for testar com o pagamento real do banco
-const MODO_TESTE = true; 
+const MODO_TESTE = false; 
 
 export default function InscricaoPage() {
   const [formData, setFormData] = useState({
