@@ -122,7 +122,7 @@ export default function InscricaoPage() {
                 nome: formData.nome,
                 email: formData.email,
                 cpf: formData.cpf,
-                valor: 0.10
+                valor: 10.00
               })
             });
           } catch (err) {
@@ -174,7 +174,7 @@ export default function InscricaoPage() {
           nome: formData.nome,
           cpf: formData.cpf,
           email: formData.email,
-          valor: 0.10
+          valor: 10.00
         })
       });
 
@@ -253,7 +253,7 @@ export default function InscricaoPage() {
                 <i className="fa-solid fa-circle-notch fa-spin"></i> Processando...
               </>
             ) : (
-              'Gerar Pagamento (R$ 0,10)'
+              'Gerar Pagamento (R$ 10,00)'
             )}
           </button>
         </form>
