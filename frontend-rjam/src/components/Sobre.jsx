@@ -18,7 +18,7 @@ export default function Sobre() {
           
           <div className="bg-card-bg rounded-lg overflow-hidden flex flex-col shadow-xl text-primary-dark hover:scale-105 transition-transform duration-300">
             <div className="h-48 overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1608681120230-058df2416f50?q=80&w=800&auto=format&fit=crop" alt="Óleo" className="w-full h-full object-cover" />
+              <img src="/img/oleo.jpg" alt="Óleo" className="w-full h-full object-cover" />
             </div>
             <div className="p-8 flex-1 flex flex-col justify-center">
               <h4 className="font-serif font-bold text-3xl mb-4 text-primary-dark">ÓLEO</h4>
@@ -29,7 +29,7 @@ export default function Sobre() {
 
           <div className="bg-card-bg rounded-lg overflow-hidden flex flex-col shadow-xl text-primary-dark hover:scale-105 transition-transform duration-300">
             <div className="h-48 overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1518338781604-db72f7fb50f1?q=80&w=800&auto=format&fit=crop" alt="Fogo" className="w-full h-full object-cover" />
+              <img src="/img/fogo.png" alt="Fogo" className="w-full h-full object-cover" />
             </div>
             <div className="p-8 flex-1 flex flex-col justify-center">
               <h4 className="font-serif font-bold text-3xl mb-4 text-primary-dark">FOGO</h4>
