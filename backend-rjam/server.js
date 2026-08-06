@@ -1,3 +1,4 @@
+// server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -9,145 +10,173 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Inicializa o cliente do Mercado Pago com o token do arquivo .env
+// Configuração do Mercado Pago
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+const payment = new Payment(client);
 
-// Caminho para o arquivo JSON onde os inscritos aprovados serão salvos
-const ARQUIVO_INSCRITOS = path.join(__dirname, 'inscritos.json');
+// Caminho do banco de dados local
+const DB_FILE = path.join(__dirname, 'inscritos.json');
 
-// Função auxiliar para ler o JSON de inscritos
+// --- FUNÇÕES AUXILIARES ---
 const lerInscritos = () => {
-    if (!fs.existsSync(ARQUIVO_INSCRITOS)) return [];
-    try {
-        const dados = fs.readFileSync(ARQUIVO_INSCRITOS, 'utf8');
-        return JSON.parse(dados);
-    } catch (error) {
-        return [];
-    }
+  if (!fs.existsSync(DB_FILE)) return [];
+  const data = fs.readFileSync(DB_FILE, 'utf-8');
+  return JSON.parse(data);
 };
 
-// Função auxiliar para salvar um inscrito aprovado no JSON (evita duplicatas)
-const salvarInscrito = (novoInscrito) => {
-    const inscritos = lerInscritos();
-    if (!inscritos.some(i => i.id === novoInscrito.id)) {
-        inscritos.push(novoInscrito);
-        fs.writeFileSync(ARQUIVO_INSCRITOS, JSON.stringify(inscritos, null, 2), 'utf8');
-    }
+const salvarInscritos = (inscritos) => {
+  fs.writeFileSync(DB_FILE, JSON.stringify(inscritos, null, 2));
 };
 
-// Rota para gerar o PIX
+// --- MEMÓRIA TEMPORÁRIA DE PAGAMENTOS ---
+// Guarda os participantes de cada PIX gerado enquanto aguarda a aprovação
+const transacoesPendentes = {};
+
+// --- ROTAS DA APLICAÇÃO ---
+
+// 1. Gerar Pagamento PIX
 app.post('/api/pix', async (req, res) => {
-    try {
-        const { nome, cpf, email, valor } = req.body;
+  const { participantes, valorTotal } = req.body;
 
-        const payment = new Payment(client);
-        
-        const body = {
-            transaction_amount: Number(valor),
-            description: 'Ingresso Conferência RJAM1',
-            payment_method_id: 'pix',
-            payer: {
-                email: email,
-                first_name: nome,
-                identification: {
-                    type: 'CPF',
-                    number: cpf.replace(/\D/g, '') // Remove pontuações do CPF
-                }
-            }
-        };
+  if (!participantes || participantes.length === 0 || !valorTotal) {
+    return res.status(400).json({ error: 'Dados inválidos.' });
+  }
 
-        const response = await payment.create({ body });
+  try {
+    // Usamos os dados do primeiro participante apenas para preencher o pagador no MP
+    const pagadorPrincipal = participantes[0]; 
 
-        // Retorna o QR Code em Base64 e o código "Copia e Cola"
-        res.status(200).json({
-            id_transacao: response.id,
-            status: response.status,
-            qr_code: response.point_of_interaction.transaction_data.qr_code,
-            qr_code_base64: response.point_of_interaction.transaction_data.qr_code_base64
-        });
-
-    } catch (error) {
-        console.error("Erro ao gerar PIX:", error);
-        res.status(500).json({ error: "Falha ao gerar o pagamento PIX." });
-    }
-});
-
-// Rota para consultar o status do PIX (Short Polling) e salvar no JSON se aprovado
-app.get('/api/pix/:id_transacao', async (req, res) => {
-    try {
-        const payment = new Payment(client);
-        
-        // Pede as informações do pagamento específico para o Mercado Pago
-        const response = await payment.get({ id: req.params.id_transacao });
-
-        // Se o pagamento foi aprovado, salva automaticamente no arquivo JSON local
-        if (response.status === 'approved') {
-            const dadosInscricao = {
-                id: response.id,
-                nome: response.additional_info?.payer?.first_name || response.payer?.first_name || req.query.nome || 'Participante',
-                email: response.payer?.email || 'Não informado',
-                cpf: response.payer?.identification?.number || 'Não informado',
-                valor: response.transaction_amount,
-                data: new Date().toISOString()
-            };
-            salvarInscrito(dadosInscricao);
+    const requestOptions = {
+      transaction_amount: Number(valorTotal),
+      description: `Inscrição RJAM1 - ${participantes.length} ingresso(s)`,
+      payment_method_id: 'pix',
+      payer: {
+        email: 'contato@rjam1.com.br', // E-mail genérico (obrigatório pro MP)
+        first_name: pagadorPrincipal.nome,
+        identification: {
+          type: 'CPF',
+          number: pagadorPrincipal.cpf.replace(/\D/g, '')
         }
+      }
+    };
 
-        // Retorna o status (ex: 'pending', 'approved', 'rejected')
-        res.status(200).json({ status: response.status });
-    } catch (error) {
-        console.error("Erro ao verificar status do PIX:", error);
-        res.status(500).json({ error: "Falha ao verificar status." });
-    }
+    const response = await payment.create({ body: requestOptions });
+    const transacaoId = response.id;
+
+    // Salva na memória os participantes e o valor rateado
+    transacoesPendentes[transacaoId] = {
+      participantes: participantes,
+      valorTotal: valorTotal
+    };
+
+    res.json({
+      id_transacao: transacaoId,
+      qr_code: response.point_of_interaction.transaction_data.qr_code,
+      qr_code_base64: response.point_of_interaction.transaction_data.qr_code_base64
+    });
+
+  } catch (error) {
+    console.error('Erro ao gerar PIX:', error);
+    res.status(500).json({ error: 'Erro ao gerar pagamento PIX.' });
+  }
 });
 
-// Rota para o Painel Adminf buscar apenas os aprovados salvos no JSON
-app.get('/api/admin/inscritos', (req, res) => {
-    try {
-        const inscritos = lerInscritos();
-        res.status(200).json(inscritos);
-    } catch (error) {
-        console.error("Erro ao carregar lista do arquivo JSON:", error);
-        res.status(500).json({ error: "Erro ao carregar lista de inscritos." });
-    }
-});
+// 2. Consultar Status do Pagamento (Polling)
+app.get('/api/pix/:id', async (req, res) => {
+  const transacaoId = req.params.id;
 
-// Rota para salvar um inscrito de forma manual/teste quando o MODO_TESTE estiver ativo
-app.post('/api/admin/salvar-teste', (req, res) => {
-    try {
-        const { nome, email, cpf, valor } = req.body;
-        const dadosInscricao = {
-            id: 'teste_' + Date.now(), // ID fictício único para o teste
-            nome: nome || 'Participante Teste',
-            email: email || 'teste@email.com',
-            cpf: cpf || '000.000.000-00',
-            valor: valor || 0.10,
+  try {
+    const response = await payment.get({ id: transacaoId });
+    const status = response.status;
+
+    // Se aprovado e a transação existir na nossa memória temporária
+    if (status === 'approved' && transacoesPendentes[transacaoId]) {
+      const dadosTransacao = transacoesPendentes[transacaoId];
+      const inscritos = lerInscritos();
+
+      // Divide o valor total pela quantidade de participantes para o relatório
+      const valorRateado = dadosTransacao.valorTotal / dadosTransacao.participantes.length;
+
+      dadosTransacao.participantes.forEach(p => {
+        // Verifica se já não foi salvo acidentalmente no polling anterior
+        const jaExiste = inscritos.find(i => i.cpf === p.cpf && i.transacaoId === transacaoId);
+        
+        if (!jaExiste) {
+          inscritos.push({
+            id: Date.now() + Math.random().toString(36).substr(2, 9),
+            transacaoId: transacaoId,
+            nome: p.nome,
+            cpf: p.cpf,
+            whatsapp: p.whatsapp,
+            valor: valorRateado,
+            status: 'pago',
             data: new Date().toISOString()
-        };
-        salvarInscrito(dadosInscricao);
-        res.status(200).json({ success: true, message: 'Inscrição de teste salva com sucesso!' });
-    } catch (error) {
-        console.error("Erro ao salvar teste:", error);
-        res.status(500).json({ error: "Erro ao salvar teste." });
+          });
+        }
+      });
+
+      salvarInscritos(inscritos);
+      
+      // Limpa da memória para não salvar de novo
+      delete transacoesPendentes[transacaoId]; 
     }
+
+    res.json({ status });
+
+  } catch (error) {
+    console.error('Erro ao consultar PIX:', error);
+    res.status(500).json({ error: 'Erro ao consultar status.' });
+  }
 });
 
-// Rota de Login para o Painel Admin
+// 3. Salvar Teste (Sem pagar - Apenas para ambiente MODO_TESTE do Frontend)
+app.post('/api/admin/salvar-teste', (req, res) => {
+  const { participantes, valorTotal } = req.body;
+
+  if (!participantes || participantes.length === 0) {
+    return res.status(400).json({ error: 'Participantes ausentes.' });
+  }
+
+  const inscritos = lerInscritos();
+  const valorRateado = valorTotal / participantes.length;
+  const transacaoTesteId = 'teste_' + Date.now();
+
+  participantes.forEach(p => {
+    inscritos.push({
+      id: Date.now() + Math.random().toString(36).substr(2, 9),
+      transacaoId: transacaoTesteId,
+      nome: p.nome,
+      cpf: p.cpf,
+      whatsapp: p.whatsapp,
+      valor: valorRateado,
+      status: 'pago (teste)',
+      data: new Date().toISOString()
+    });
+  });
+
+  salvarInscritos(inscritos);
+  res.json({ success: true });
+});
+
+// 4. Login do Painel Administrativo
 app.post('/api/admin/login', (req, res) => {
-    const { usuario, senha } = req.body;
-
-    // Compara com as credenciais definidas no arquivo .env
-    const usuarioValido = process.env.ADMIN_USER || 'admin';
-    const senhaValida = process.env.ADMIN_PASS || '123456';
-
-    if (usuario === usuarioValido && senha === senhaValida) {
-        res.status(200).json({ success: true, message: 'Autenticado com sucesso!' });
-    } else {
-        res.status(401).json({ success: false, message: 'Usuário ou senha incorretos.' });
-    }
+  const { usuario, senha } = req.body;
+  
+  if (usuario === process.env.ADMIN_USER && senha === process.env.ADMIN_PASS) {
+    res.json({ success: true, message: 'Autorizado' });
+  } else {
+    res.status(401).json({ success: false, message: 'Usuário ou senha incorretos' });
+  }
 });
 
+// 5. Obter lista de Inscritos (Painel Admin)
+app.get('/api/admin/inscritos', (req, res) => {
+  const inscritos = lerInscritos();
+  res.json(inscritos);
+});
+
+// --- INICIAR SERVIDOR ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT} 🚀`);
+  console.log(`Servidor rodando na porta ${PORT}`);
 });
