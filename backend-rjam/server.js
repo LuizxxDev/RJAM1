@@ -2,9 +2,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(cors());
@@ -14,40 +13,29 @@ app.use(express.json());
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 const payment = new Payment(client);
 
-// Caminho do banco de dados local
-const DB_FILE = path.join(__dirname, 'inscritos.json');
-
-// --- FUNÇÕES AUXILIARES ---
-const lerInscritos = () => {
-  if (!fs.existsSync(DB_FILE)) return [];
-  const data = fs.readFileSync(DB_FILE, 'utf-8');
-  return JSON.parse(data);
-};
-
-const salvarInscritos = (inscritos) => {
-  fs.writeFileSync(DB_FILE, JSON.stringify(inscritos, null, 2));
-};
-
-// --- MEMÓRIA TEMPORÁRIA DE PAGAMENTOS ---
-// Guarda os participantes de cada PIX gerado enquanto aguarda a aprovação
-const transacoesPendentes = {};
+// Configuração do Supabase
+// Certifique-se de ter SUPABASE_URL e SUPABASE_KEY no seu arquivo .env
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // --- ROTAS DA APLICAÇÃO ---
 
 // 1. Gerar Pagamento PIX
 app.post('/api/pix', async (req, res) => {
   const { participantes, valorTotal } = req.body;
-
   if (!participantes || participantes.length === 0 || !valorTotal) {
     return res.status(400).json({ error: 'Dados inválidos.' });
   }
 
   try {
-    // Usamos os dados do primeiro participante apenas para preencher o pagador no MP
     const pagadorPrincipal = participantes[0]; 
 
+    // Calcula a taxa do Mercado Pago (aprox. 0.99%) para garantir o valor líquido (ex: R$ 10,00)
+    const taxaMP = 0.0099;
+    const valorComTaxa = Number(valorTotal) / (1 - taxaMP);
+
     const requestOptions = {
-      transaction_amount: Number(valorTotal),
+      // Usa o valor com a taxa embutida formatado para 2 casas decimais
+      transaction_amount: Number(valorComTaxa.toFixed(2)),
       description: `Inscrição RJAM1 - ${participantes.length} ingresso(s)`,
       payment_method_id: 'pix',
       payer: {
@@ -61,13 +49,24 @@ app.post('/api/pix', async (req, res) => {
     };
 
     const response = await payment.create({ body: requestOptions });
-    const transacaoId = response.id;
+    const transacaoId = String(response.id);
+    const valorRateado = valorTotal / participantes.length;
 
-    // Salva na memória os participantes e o valor rateado
-    transacoesPendentes[transacaoId] = {
-      participantes: participantes,
-      valorTotal: valorTotal
-    };
+    // Salva os participantes DIRETAMENTE no Supabase com o status "pendente"
+    const inscritosPendentes = participantes.map(p => ({
+      transacao_id: transacaoId,
+      nome: p.nome,
+      cpf: p.cpf,
+      whatsapp: p.whatsapp,
+      valor: valorRateado,
+      status: 'pendente'
+    }));
+
+    const { error: dbError } = await supabase.from('inscritos').insert(inscritosPendentes);
+    
+    if (dbError) {
+      console.error('Erro ao salvar no Supabase:', dbError);
+    }
 
     res.json({
       id_transacao: transacaoId,
@@ -83,46 +82,26 @@ app.post('/api/pix', async (req, res) => {
 
 // 2. Consultar Status do Pagamento (Polling)
 app.get('/api/pix/:id', async (req, res) => {
-  const transacaoId = req.params.id;
+  const transacaoId = String(req.params.id);
 
   try {
     const response = await payment.get({ id: transacaoId });
     const status = response.status;
 
-    // Se aprovado e a transação existir na nossa memória temporária
-    if (status === 'approved' && transacoesPendentes[transacaoId]) {
-      const dadosTransacao = transacoesPendentes[transacaoId];
-      const inscritos = lerInscritos();
+    // Se aprovado, atualiza o status de todos os participantes com essa transação para "pago"
+    if (status === 'approved') {
+      const { error: updateError } = await supabase
+        .from('inscritos')
+        .update({ status: 'pago' })
+        .eq('transacao_id', transacaoId)
+        .eq('status', 'pendente'); // Garante que atualiza apenas o que estava pendente
 
-      // Divide o valor total pela quantidade de participantes para o relatório
-      const valorRateado = dadosTransacao.valorTotal / dadosTransacao.participantes.length;
-
-      dadosTransacao.participantes.forEach(p => {
-        // Verifica se já não foi salvo acidentalmente no polling anterior
-        const jaExiste = inscritos.find(i => i.cpf === p.cpf && i.transacaoId === transacaoId);
-        
-        if (!jaExiste) {
-          inscritos.push({
-            id: Date.now() + Math.random().toString(36).substr(2, 9),
-            transacaoId: transacaoId,
-            nome: p.nome,
-            cpf: p.cpf,
-            whatsapp: p.whatsapp,
-            valor: valorRateado,
-            status: 'pago',
-            data: new Date().toISOString()
-          });
-        }
-      });
-
-      salvarInscritos(inscritos);
-      
-      // Limpa da memória para não salvar de novo
-      delete transacoesPendentes[transacaoId]; 
+      if (updateError) {
+        console.error('Erro ao atualizar Supabase:', updateError);
+      }
     }
 
     res.json({ status });
-
   } catch (error) {
     console.error('Erro ao consultar PIX:', error);
     res.status(500).json({ error: 'Erro ao consultar status.' });
@@ -130,38 +109,38 @@ app.get('/api/pix/:id', async (req, res) => {
 });
 
 // 3. Salvar Teste (Sem pagar - Apenas para ambiente MODO_TESTE do Frontend)
-app.post('/api/admin/salvar-teste', (req, res) => {
+app.post('/api/admin/salvar-teste', async (req, res) => {
   const { participantes, valorTotal } = req.body;
-
+  
   if (!participantes || participantes.length === 0) {
     return res.status(400).json({ error: 'Participantes ausentes.' });
   }
 
-  const inscritos = lerInscritos();
   const valorRateado = valorTotal / participantes.length;
   const transacaoTesteId = 'teste_' + Date.now();
 
-  participantes.forEach(p => {
-    inscritos.push({
-      id: Date.now() + Math.random().toString(36).substr(2, 9),
-      transacaoId: transacaoTesteId,
-      nome: p.nome,
-      cpf: p.cpf,
-      whatsapp: p.whatsapp,
-      valor: valorRateado,
-      status: 'pago (teste)',
-      data: new Date().toISOString()
-    });
-  });
+  const inscritosTeste = participantes.map(p => ({
+    transacao_id: transacaoTesteId,
+    nome: p.nome,
+    cpf: p.cpf,
+    whatsapp: p.whatsapp,
+    valor: valorRateado,
+    status: 'pago (teste)'
+  }));
 
-  salvarInscritos(inscritos);
+  const { error } = await supabase.from('inscritos').insert(inscritosTeste);
+
+  if (error) {
+    console.error('Erro ao salvar teste no Supabase:', error);
+    return res.status(500).json({ error: 'Erro interno.' });
+  }
+
   res.json({ success: true });
 });
 
 // 4. Login do Painel Administrativo
 app.post('/api/admin/login', (req, res) => {
   const { usuario, senha } = req.body;
-  
   if (usuario === process.env.ADMIN_USER && senha === process.env.ADMIN_PASS) {
     res.json({ success: true, message: 'Autorizado' });
   } else {
@@ -170,9 +149,20 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 // 5. Obter lista de Inscritos (Painel Admin)
-app.get('/api/admin/inscritos', (req, res) => {
-  const inscritos = lerInscritos();
-  res.json(inscritos);
+app.get('/api/admin/inscritos', async (req, res) => {
+  // Busca apenas os que realmente pagaram ou são testes aprovados, ordenando do mais recente pro mais antigo
+  const { data: inscritos, error } = await supabase
+    .from('inscritos')
+    .select('*')
+    .like('status', 'pago%')
+    .order('data', { ascending: false });
+
+  if (error) {
+    console.error('Erro ao buscar inscritos:', error);
+    return res.status(500).json({ error: 'Erro ao buscar dados.' });
+  }
+
+  res.json(inscritos || []);
 });
 
 // --- INICIAR SERVIDOR ---
