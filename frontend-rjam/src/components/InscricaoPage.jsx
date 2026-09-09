@@ -261,34 +261,13 @@ export default function InscricaoPage() {
             ))}
           </div>
 
-          {/* Resumo de Valores */}
-          <div className="mt-8 pt-6 border-t border-gray-700 mb-6">
-            <h3 className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-4">Resumo do Pedido</h3>
-            
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-400 text-sm">Subtotal ({quantidade}x ingressos)</span>
-              <span className="text-gray-300 text-sm">
-                R$ {(quantidade * VALOR_INGRESSO).toFixed(2).replace('.', ',')}
-              </span>
-            </div>
-            
-            <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-800">
-              <span className="text-gray-400 text-sm flex items-center gap-2">
-                Taxa do Mercado Pago <i className="fa-solid fa-circle-info text-[10px] text-gray-500" title="Taxa obrigatória de processamento do Pix"></i>
-              </span>
-              <span className="text-gray-300 text-sm">
-                R$ {((quantidade * VALOR_INGRESSO) / (1 - 0.0099) - (quantidade * VALOR_INGRESSO)).toFixed(2).replace('.', ',')}
-              </span>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-gray-200 font-bold text-lg">Total a pagar:</span>
-              <span className="text-3xl font-black text-accent-gold">
-                R$ {((quantidade * VALOR_INGRESSO) / (1 - 0.0099)).toFixed(2).replace('.', ',')}
-              </span>
-            </div>
+          <div className="mt-8 pt-6 border-t border-gray-700 flex justify-between items-center mb-6">
+            <span className="text-gray-300 font-bold text-lg">Total:</span>
+            <span className="text-2xl font-black text-accent-gold">
+              R$ {(quantidade * VALOR_INGRESSO).toFixed(2).replace('.', ',')}
+            </span>
           </div>
-
+          
           <button type="submit" disabled={carregando} className="w-full bg-gradient-to-r from-accent-gold to-yellow-600 text-primary-dark font-black py-4 rounded-md text-lg uppercase tracking-wider btn-glow hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 disabled:opacity-50">
             {carregando ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Processando...</> : `Gerar PIX`}
           </button>

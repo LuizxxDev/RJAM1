@@ -14,7 +14,6 @@ const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN 
 const payment = new Payment(client);
 
 // Configuração do Supabase
-// Certifique-se de ter SUPABASE_URL e SUPABASE_KEY no seu arquivo .env
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // --- ROTAS DA APLICAÇÃO ---
@@ -29,17 +28,12 @@ app.post('/api/pix', async (req, res) => {
   try {
     const pagadorPrincipal = participantes[0]; 
 
-    // Calcula a taxa do Mercado Pago (aprox. 0.99%) para garantir o valor líquido (ex: R$ 10,00)
-    const taxaMP = 0.0099;
-    const valorComTaxa = Number(valorTotal) / (1 - taxaMP);
-
     const requestOptions = {
-      // Usa o valor com a taxa embutida formatado para 2 casas decimais
-      transaction_amount: Number(valorComTaxa.toFixed(2)),
+      transaction_amount: Number(valorTotal), // Removido o cálculo de taxa, cobra o valor exato
       description: `Inscrição RJAM1 - ${participantes.length} ingresso(s)`,
       payment_method_id: 'pix',
       payer: {
-        email: 'contato@rjam1.com.br', // E-mail genérico (obrigatório pro MP)
+        email: 'contato@rjam1.com.br',
         first_name: pagadorPrincipal.nome,
         identification: {
           type: 'CPF',
@@ -94,7 +88,7 @@ app.get('/api/pix/:id', async (req, res) => {
         .from('inscritos')
         .update({ status: 'pago' })
         .eq('transacao_id', transacaoId)
-        .eq('status', 'pendente'); // Garante que atualiza apenas o que estava pendente
+        .eq('status', 'pendente');
 
       if (updateError) {
         console.error('Erro ao atualizar Supabase:', updateError);
