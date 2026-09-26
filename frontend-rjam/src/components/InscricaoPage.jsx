@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { cpf as cpfValidator } from 'cpf-cnpj-validator'; // <-- Importando a biblioteca
 
 const MODO_TESTE = false; 
-const VALOR_INGRESSO = 10.00; 
+const VALOR_INGRESSO = 0.10; 
 
 export default function InscricaoPage() {
   const [quantidade, setQuantidade] = useState(1);
